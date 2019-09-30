@@ -45,6 +45,15 @@ body {
   justify-content: space-between;
 }
 
+.endElement{
+  text-align: center;
+  justify-self: center;
+  font-size: 24px;
+  border: 1px solid gray;
+  border-radius: 10px;
+  padding: 10px 20px;
+}
+
 @keyframes fade {
   from {
     opacity: 0;

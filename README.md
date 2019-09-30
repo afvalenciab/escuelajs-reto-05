@@ -30,44 +30,76 @@ npm run start
 
 - Variable llamada $app donde haremos render de nuestra app.
 - Elemento del DOM que sera Observado.
-- Constante 'API': Utilizamos la API de Rick and Morty.
+- Constante 'API': Utilizamos la API de la escuela de Javascript para obtener los personajes de Rick and Morty
+- Variable llamada 'isTheEnd' utilizada como un bandera para saber que llegamos al final de la imagenes, la cual tendra valores de true o false.
+
 
 ```javascript
 const $app = document.getElementById('app');
 const $observe = document.getElementById('observe');
-const API = 'https://rickandmortyapi.com/api/character/';
+const API = 'https://us-central1-escuelajs-api.cloudfunctions.net/characters';
+let isTheEnd = false;
 ```
 
-Función llamada 'getData' que se encarga de hacer Fetch a una API y construye un elemento nuevo en el DOM.
+Función llamada 'getData' que se encarga de hacer Fetch a una API, almacenar en el local storage en una llave llamada 'next_fetch' la URL de la siguiente petición, en caso de que no exista una proxima invocación actualiza la bandera 'isTheEnd' con el valor de true y construye un elemento nuevo en el DOM.
 
 ```javascript
-const getData = api => {
-  fetch(api)
-    .then(response => response.json())
-    .then(response => {
-      const characters = response.results;
-      let output = characters.map(character => {
-        return `
-      <article class="Card">
-        <img src="${character.image}" />
-        <h2>${character.name}<span>${character.species}</span></h2>
-      </article>
-    `
-      }).join('');
-      let newItem = document.createElement('section');
-      newItem.classList.add('Items');
-      newItem.innerHTML = output;
-      $app.appendChild(newItem);
-    })
-    .catch(error => console.log(error));
+const getData = async api => {
+  try {
+    const fetchResponse = await fetch(api);
+    const data = await fetchResponse.json();
+
+    if (data.info.next) {
+      localStorage.setItem('next_fetch', data.info.next);
+    } else {
+      isTheEnd = true;
+    }
+
+    const characters = data.results;
+    let output = characters.map(character => {
+      return `
+          <article class="Card">
+            <img src="${character.image}" />
+            <h2>(${character.id}) ${character.name}<span>${character.species}</span></h2>
+          </article>
+        `
+    }).join('');
+    let newItem = document.createElement('section');
+    newItem.classList.add('Items');
+    newItem.innerHTML = output;
+    $app.appendChild(newItem);
+  } catch (error) {
+    throw new Error(`Error consultando la información: ${error}`);
+  }
 }
 ```
 
-Función encargada de hacer Fetch de los personajes.
+Función loadData() encargada de hacer la petición de los personajes de acuerdo al valor almacenado en el local storage, en caso de no tener información en el local storage lo cual indica que es la primera petición realiza el llamado de la variable 'API' y valida si ya se llego al final de los personajes para llamar la función renderEnd().
 
 ```javascript
 const loadData = () => {
-  getData(API);
+    if (!isTheEnd) {
+    let apiNextFetch = '';
+
+    if (localStorage.getItem('next_fetch')) {
+      apiNextFetch = localStorage.getItem('next_fetch');
+    } else {
+      apiNextFetch = API;
+    }
+
+    getData(apiNextFetch);
+  } else {
+    intersectionObserver.unobserve($observe);
+    renderEnd();
+  }
+}
+```
+Función renderEnd() encargada de contruir y mostrar un mensaje en el DOM indicando que no hay mas elementos.
+
+```javascript
+const renderEnd = () => {
+  const p = document.getElementById('endElement');
+  p.innerText = 'No hay mas elementos';
 }
 ```
 
@@ -83,6 +115,16 @@ const intersectionObserver = new IntersectionObserver(entries => {
 });
 
 intersectionObserver.observe($observe);
+```
+
+Función load() ejecutada cada vez que se recargue la página encargada de limpiar los datos almacenados en el local storage e inciar el patrón IntersectionObserver para observar nuestro elememtno target.
+
+```javascript
+const load = () => {
+  localStorage.clear();
+  intersectionObserver.observe($observe);
+}
+window.onload = load;
 ```
 
 
